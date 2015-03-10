@@ -3482,6 +3482,9 @@ static void check_temp(struct work_struct *work)
 	long temp = 0;
 	int ret = 0;
 
+	if (!msm_thermal_probed)
+		return;
+
 	do_therm_reset();
 
 	ret = therm_get_temp(msm_thermal_info.sensor_id, THERM_TSENS_ID, &temp);
@@ -3572,6 +3575,7 @@ static int hotplug_notify(enum thermal_trip_type type, int temp, void *data)
 
 	pr_info_ratelimited("%s reach temp threshold: %d\n",
 			       cpu_node->sensor_type, temp);
+	pr_info_ratelimited("%s reach temp threshold: %d\n", cpu_node->sensor_type, temp);
 
 	if (!(msm_thermal_info.core_control_mask & BIT(cpu_node->cpu)))
 		return 0;
