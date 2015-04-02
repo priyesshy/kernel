@@ -49,4 +49,3 @@ obj-$(CONFIG_PRIMA_WLAN)        += prima/
 obj-$(CONFIG_PRONTO_WLAN)       += prima/
 obj-$(CONFIG_PRIMA_WLAN)	+= prima/
 obj-$(CONFIG_PRONTO_WLAN)	+= prima/
-obj-$(CONFIG_FRANDOM)		+= frandom/
