@@ -82,6 +82,9 @@ static u64 zswap_duplicate_entry;
 static bool zswap_enabled __read_mostly;
 module_param_named(enabled, zswap_enabled, bool, 0444);
 module_param_named(enabled, zswap_enabled, bool, 0);
+/* Enable/disable zswap (enabled by default) */
+static bool zswap_enabled = 1;
+module_param_named(enabled, zswap_enabled, bool, 0644);
 
 /* Compressor to be used by zswap (fixed at boot for now) */
 #define ZSWAP_COMPRESSOR_DEFAULT "lzo"
@@ -454,6 +457,52 @@ static bool zswap_is_full(void)
 		zswap_pool_pages);
 }
 
+static inline int zswap_page_pool_create(void)
+{
+	/* TODO: dynamically size mempool */
+	zswap_page_pool = mempool_create_page_pool(256, 0);
+	if (!zswap_page_pool)
+		return -ENOMEM;
+	return 0;
+}
+
+static inline void zswap_page_pool_destroy(void)
+{
+	mempool_destroy(zswap_page_pool);
+}
+
+/*static struct page *zswap_alloc_page(gfp_t flags)
+{
+	struct page *page;
+
+	if (atomic_read(&zswap_pool_pages) >= zswap_max_pool_pages()) {
+		zswap_pool_limit_hit++;
+		return NULL;
+	}
+	page = mempool_alloc(zswap_page_pool, flags);
+	if (page)
+		atomic_inc(&zswap_pool_pages);
+	return page;
+}
+
+static void zswap_free_page(struct page *page)
+{
+	if (!page)
+		return;
+	mempool_free(page, zswap_page_pool);
+	atomic_dec(&zswap_pool_pages);
+}
+
+static struct zs_ops zswap_zs_ops = {
+	.alloc = zswap_alloc_page,
+	.free = zswap_free_page
+};*/
+
+
+/*********************************
+* helpers
+**********************************/
+
 /*
  * Carries out the common pattern of freeing and entry's zsmalloc allocation,
  * freeing the entry itself, and decrementing the number of stored pages.
@@ -756,6 +805,14 @@ static int zswap_frontswap_store(unsigned type, pgoff_t offset,
 	char *buf;
 	u8 *src, *dst;
 	struct zswap_header *zhdr;
+	struct page *tmppage;
+	bool writeback_attempted = 0;
+#ifdef CONFIG_ZSWAP_ENABLE_WRITEBACK
+	u8 *tmpdst;
+#endif
+	
+	if (!zswap_enabled)
+		return -EPERM;
 
 	if (!tree) {
 		ret = -ENODEV;
