@@ -527,10 +527,13 @@ extern struct cpufreq_governor cpufreq_gov_alucard;
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_IRONACTIVE)
 extern struct cpufreq_governor cpufreq_gov_ironactive;
 #define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_ironactive)
+<<<<<<< HEAD
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_CULTIVATION)
 extern struct cpufreq_governor cpufreq_gov_cultivation;
 #define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_cultivation)
 >>>>>>> c809c1d7be7... cpufreq: implement cultivation governor v1.5
+=======
+>>>>>>> 2e134301fcb... cpufreq: Add Ironactive governor
 #elif defined(CONFIG_CPU_FREQ_DEFAULT_GOV_SCHED)
 extern struct cpufreq_governor cpufreq_gov_sched;
 #define CPUFREQ_DEFAULT_GOVERNOR	(&cpufreq_gov_sched)
