@@ -8,7 +8,10 @@ obj-$(CONFIG_DEVFREQ_GOV_POWERSAVE)	+= governor_powersave.o
 obj-$(CONFIG_DEVFREQ_GOV_USERSPACE)	+= governor_userspace.o
 obj-$(CONFIG_DEVFREQ_GOV_CPUFREQ)	+= governor_cpufreq.o
 obj-$(CONFIG_DEVFREQ_GOV_MSM_ADRENO_TZ)	+= governor_msm_adreno_tz.o
+<<<<<<< HEAD
 obj-$(CONFIG_SIMPLE_GPU_ALGORITHM)	+= simple_gpu_algorithm.o
+=======
+>>>>>>> 71b323e8555... Introducting Adreno Idler
 obj-$(CONFIG_ADRENO_IDLER)		+= adreno_idler.o
 obj-$(CONFIG_DEVFREQ_GOV_MSM_CPUFREQ)	+= governor_msm_cpufreq.o
 obj-$(CONFIG_ARCH_MSM_KRAIT)		+= krait-l2pm.o
