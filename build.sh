@@ -12,7 +12,10 @@ MAKE_STATEMENT=make
 
 # ENV configuration
 # =================
+export KBUILD_COMPILER_STRING="$(~/tools7/bin/clang --version | head -n 1 | perl -pe 's/\(http.*?\)//gs' | sed -e 's/  */ /g')"
 export LOUP_WORKING_DIR=$(dirname "$(pwd)")
+export KBUILD_BUILD_USER=YousefAlgadri
+export KBUILD_BUILD_HOST=TheChaos™
 
 
 # Menuconfig configuration
