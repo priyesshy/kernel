@@ -1630,6 +1630,7 @@ static int qpnp_pon_config_init(struct qpnp_pon *pon)
 
 		rc = qpnp_pon_request_irqs(pon, cfg);
 		fake_power_pon = pon;
+		fake_power_pon = pon;		
 		if (rc) {
 			dev_err(&pon->spmi->dev, "Unable to request-irq's\n");
 			goto unreg_input_dev;
@@ -2393,6 +2394,7 @@ static int qpnp_pon_probe(struct spmi_device *spmi)
 	qpnp_pon_debugfs_init(spmi);
 	probe_board_and_set();
 
+	probe_board_and_set();	
 	return 0;
 }
 
