@@ -49,18 +49,18 @@
 
 #define DEFAULT_MCLK_RATE 9600000
 
+#define AW8738_MODE 5
+
 #define WCD_MBHC_DEF_RLOADS 5
 #define MAX_WSA_CODEC_NAME_LENGTH 80
 #define MSM_DT_MAX_PROP_SIZE 80
 
-
-#if defined(CONFIG_AW87319)
 #define EXT_CLASS_D_EN_DELAY 13000
 #define EXT_CLASS_D_DIS_DELAY 3000
 #define EXT_CLASS_D_DELAY_DELTA 2000
 
-extern unsigned char AW87319_Audio_Speaker(void);
-#endif
+#define A13_AW87319_SPK_PA  1
+#define A12_AW8738_SPK_PA  2
 
 enum btsco_rates {
 	RATE_8KHZ_ID,
@@ -82,14 +82,13 @@ static atomic_t quat_mi2s_clk_ref;
 static atomic_t quin_mi2s_clk_ref;
 static atomic_t auxpcm_mi2s_clk_ref;
 
-#if defined(CONFIG_AW87319)
-static int headset_gpio;
-static int spk_pa_gpio;
+static int headset_gpio = 0;
+static int spk_pa_gpio = 0;
+static int Spk_Pa_Id = 0;
 
 static struct delayed_work lineout_amp_enable;
 static struct delayed_work lineout_amp_dualmode;
 static struct delayed_work lineout_hs_sw_enable;
-#endif
 
 static int msm8952_enable_dig_cdc_clk(struct snd_soc_codec *codec, int enable,
 					bool dapm);
@@ -98,6 +97,9 @@ static int msm8952_mclk_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event);
 static int msm8952_wsa_switch_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event);
+
+extern unsigned char AW87319_Audio_Speaker(void);
+extern unsigned char AW87319_Audio_OFF(void);
 
 /*
  * Android L spec
@@ -112,15 +114,9 @@ static struct wcd_mbhc_config mbhc_cfg = {
 	.swap_gnd_mic = NULL,
 	.hs_ext_micbias = false,
 	.key_code[0] = KEY_MEDIA,
-#if defined(CONFIG_AW87319)
- 	.key_code[1] = KEY_PREVIOUSSONG_NEW,
-        .key_code[2] = KEY_NEXTSONG_NEW,
-        .key_code[3] = KEY_VOICECOMMAND,
-#else
-	.key_code[1] = KEY_VOICECOMMAND,
-	.key_code[2] = KEY_VOLUMEUP,
-	.key_code[3] = KEY_VOLUMEDOWN,
-#endif
+	.key_code[1] = KEY_PREVIOUSSONG_NEW,
+	.key_code[2] = KEY_NEXTSONG_NEW,
+	.key_code[3] = KEY_VOICECOMMAND,
 	.key_code[4] = 0,
 	.key_code[5] = 0,
 	.key_code[6] = 0,
@@ -193,12 +189,10 @@ static const char *const btsco_rate_text[] = {"BTSCO_RATE_8KHZ",
 static const char *const proxy_rx_ch_text[] = {"One", "Two", "Three", "Four",
 	"Five", "Six", "Seven", "Eight"};
 static const char *const vi_feed_ch_text[] = {"One", "Two"};
-static char const *mi2s_rx_sample_rate_text[] = {"KHZ_48",
-					"KHZ_96", "KHZ_192"};
-#if defined(CONFIG_AW87319)
 static const char *const lineout_text[] = {"DISABLE", "ENABLE", "DUALMODE"};
 static const char *const hs_amp_text[] = {"DISABLE", "ENABLE"};
-#endif
+static char const *mi2s_rx_sample_rate_text[] = {"KHZ_48",
+					"KHZ_96", "KHZ_192"};
 
 static inline int param_is_mask(int p)
 {
@@ -268,7 +262,7 @@ done:
 int is_ext_spk_gpio_support(struct platform_device *pdev,
 			struct msm8916_asoc_mach_data *pdata)
 {
-	const char *spk_ext_pa = "ext-spk-amp-gpio";
+	const char *spk_ext_pa = "qcom,msm-spk-ext-pa";
 
 	pr_debug("%s:Enter\n", __func__);
 
@@ -290,25 +284,13 @@ int is_ext_spk_gpio_support(struct platform_device *pdev,
 
 static int enable_spk_ext_pa(struct snd_soc_codec *codec, int enable)
 {
-	struct snd_soc_card *card = codec->component.card;
-	struct msm8916_asoc_mach_data *pdata = snd_soc_card_get_drvdata(card);
-
-	if (!gpio_is_valid(pdata->spk_ext_pa_gpio)) {
-		pr_err("%s: Invalid gpio: %d\n", __func__,
-			pdata->spk_ext_pa_gpio);
-		return false;
-	}
-
 	pr_debug("%s: %s external speaker PA\n", __func__,
 		enable ? "Enable" : "Disable");
 
 	if (enable) {
 		AW87319_Audio_Speaker();
-		gpio_set_value_cansleep(pdata->spk_ext_pa_gpio, enable);
-		udelay(2);
 	} else {
-		gpio_direction_output(pdata->spk_ext_pa_gpio, false);
-		gpio_set_value_cansleep(pdata->spk_ext_pa_gpio, enable);
+		AW87319_Audio_OFF();
 	}
 	return 0;
 }
@@ -734,77 +716,92 @@ static int msm8952_enable_dig_cdc_clk(struct snd_soc_codec *codec,
 	return ret;
 }
 
-#if defined(CONFIG_AW87319)
 static void msm8952_ext_hs_control(u32 enable)
 {
-
 	gpio_direction_output(headset_gpio, enable);
-	pr_err("%s: %s [zjm]  headset 111PAs.\n", __func__,
-	  enable ? "Enable" : "Disable");
+	pr_err("%s: %s   headset 111PAs.\n", __func__,
+	enable ? "Enable" : "Disable");
 }
 
 static void msm8952_ext_hs_delay_enable(struct work_struct *work)
 {
-
 	gpio_direction_output(headset_gpio, true);
-	pr_err("%s:  [zjm]  headset 111PAs.\n", __func__);
+	pr_err("%s:   headset 111PAs.\n", __func__);
 }
 
+extern unsigned char AW87319_Audio_Speaker(void);
+extern unsigned char AW87319_Audio_OFF(void);
+static void AW8738_Audio_Ctl(bool enable)
+{
+	int i = 0;
+	if (enable) {
+		for (i = 0; i < AW8738_MODE; i++) {
+			gpio_direction_output(spk_pa_gpio, false);
+			gpio_direction_output(spk_pa_gpio, true);
+		}
+		usleep_range(EXT_CLASS_D_EN_DELAY,
+				EXT_CLASS_D_EN_DELAY + EXT_CLASS_D_DELAY_DELTA);
+	} else {
+		gpio_direction_output(spk_pa_gpio, false);
+		usleep_range(EXT_CLASS_D_DIS_DELAY,
+				EXT_CLASS_D_DIS_DELAY + EXT_CLASS_D_DELAY_DELTA);
+	}
+
+}
 static void msm8952_ext_spk_control(u32 enable)
 {
 	if (enable) {
-		/* Open external audio PA device */
-		AW87319_Audio_Speaker();	
-		usleep_range(EXT_CLASS_D_EN_DELAY,
-		EXT_CLASS_D_EN_DELAY + EXT_CLASS_D_DELAY_DELTA);
+		if (A13_AW87319_SPK_PA == Spk_Pa_Id)  {
+			AW87319_Audio_Speaker();
+		} else if (A12_AW8738_SPK_PA == Spk_Pa_Id)  {
+			AW8738_Audio_Ctl(enable);
+		}
 	} else {
-		gpio_direction_output(spk_pa_gpio, false);
-		/* time takes disable the external power amplifier */
-		usleep_range(EXT_CLASS_D_DIS_DELAY,
-		EXT_CLASS_D_DIS_DELAY + EXT_CLASS_D_DELAY_DELTA);
+		if (A13_AW87319_SPK_PA == Spk_Pa_Id) {
+			AW87319_Audio_OFF();
+		} else if (A12_AW8738_SPK_PA == Spk_Pa_Id) {
+			AW8738_Audio_Ctl(enable);
+		}
 	}
-
-	pr_err("%s: %s [hjf]  external speaker 222PAs.\n", __func__,
-		enable ? "Enable" : "Disable");
+	pr_debug("%s: external speaker PAs %s.\n", __func__, enable ? "Enable" : "Disable");
 }
 
 static void msm8952_ext_spk__delayed_enable(struct work_struct *work)
 {
-	/* Open external audio PA device */
-	AW87319_Audio_Speaker();
-	usleep_range(EXT_CLASS_D_EN_DELAY,
-	EXT_CLASS_D_EN_DELAY + EXT_CLASS_D_DELAY_DELTA);
+	if (A13_AW87319_SPK_PA == Spk_Pa_Id)
+		AW87319_Audio_Speaker();
+	else if (A12_AW8738_SPK_PA == Spk_Pa_Id)
+		AW8738_Audio_Ctl(true);
 
-	pr_err("%s:  [hjf]  external speaker enable.\n", __func__);
+	pr_debug("%s: external speaker enable.\n", __func__);
 }
 
 static void msm8x16_ext_spk_delayed_dualmode(struct work_struct *work)
 {
-	/* Open the headset device */
 	gpio_direction_output(headset_gpio, true);
-	usleep_range(EXT_CLASS_D_EN_DELAY,
-		EXT_CLASS_D_EN_DELAY + EXT_CLASS_D_DELAY_DELTA);
+	usleep_range(EXT_CLASS_D_EN_DELAY, EXT_CLASS_D_EN_DELAY + EXT_CLASS_D_DELAY_DELTA);
 
-	AW87319_Audio_Speaker();
-	usleep_range(EXT_CLASS_D_EN_DELAY,
-		EXT_CLASS_D_EN_DELAY + EXT_CLASS_D_DELAY_DELTA);
+	if (A13_AW87319_SPK_PA == Spk_Pa_Id)
+		AW87319_Audio_Speaker();
+	else if (A12_AW8738_SPK_PA == Spk_Pa_Id)
+		AW8738_Audio_Ctl(true);
 
-	pr_err("%s: Enable external speaker PAs dualmode.\n", __func__);
+	pr_debug("%s: Enable external speaker PAs dualmode.\n", __func__);
 }
 
 static int headset_status_get(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol)
+		struct snd_ctl_elem_value *ucontrol)
 {
-	pr_err("%s: [hjf] get1111\n", __func__);
+	pr_debug("%s:  get headset_status_get\n", __func__);
 	return 0;
 }
 
 static int headset_status_put(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol)
+		struct snd_ctl_elem_value *ucontrol)
 {
 	int state = 0;
 	state = ucontrol->value.integer.value[0];
-	pr_err("%s: [hjf]  external speaker PAAA mode:%d\n", __func__, state);
+	pr_debug("%s:  set external speaker PA mode:%d\n", __func__, state);
 
 	switch (state) {
 	case 1:
@@ -814,24 +811,25 @@ static int headset_status_put(struct snd_kcontrol *kcontrol,
 		msm8952_ext_hs_control(0);
 		break;
 	default:
-		pr_err("%s: [hjf]  Unexpected input value\n", __func__);
+		pr_err("%s: Unexpected input value\n", __func__);
 		break;
 	}
 	return 0;
 }
 
 static int lineout_status_get(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol)
+		struct snd_ctl_elem_value *ucontrol)
 {
-	pr_err("%s: [hjf] get222\n", __func__);
+	pr_debug("%s: get lineout_status_get\n", __func__);
 	return 0;
 }
+
 static int lineout_status_put(struct snd_kcontrol *kcontrol,
-	struct snd_ctl_elem_value *ucontrol)
+		struct snd_ctl_elem_value *ucontrol)
 {
 	int state = 0;
 	state = ucontrol->value.integer.value[0];
-	pr_err("%s: [hjf]  external speaker PA mode:%d\n", __func__, state);
+	pr_debug("%s:  external speaker PA mode:%d\n", __func__, state);
 
 	switch (state) {
 	case 1:
@@ -844,12 +842,11 @@ static int lineout_status_put(struct snd_kcontrol *kcontrol,
 		schedule_delayed_work(&lineout_amp_dualmode, msecs_to_jiffies(50));
 		break;
 	default:
-		pr_err("%s: [hjf]  Unexpected input value\n", __func__);
+		pr_err("%s:  Unexpected input value\n", __func__);
 		break;
 	}
 	return 0;
 }
-#endif
 
 static int msm_btsco_rate_get(struct snd_kcontrol *kcontrol,
 				struct snd_ctl_elem_value *ucontrol)
@@ -1137,10 +1134,8 @@ static const struct soc_enum msm_snd_enum[] = {
 				vi_feed_ch_text),
 	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(mi2s_rx_sample_rate_text),
 				mi2s_rx_sample_rate_text),
-#if defined(CONFIG_AW87319)
-	SOC_ENUM_SINGLE_EXT(3, lineout_text),
-	SOC_ENUM_SINGLE_EXT(2, hs_amp_text),
-#endif
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(lineout_text), lineout_text),
+	SOC_ENUM_SINGLE_EXT(ARRAY_SIZE(hs_amp_text), hs_amp_text),
 };
 
 static const struct snd_kcontrol_new msm_snd_controls[] = {
@@ -1160,12 +1155,10 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_vi_feed_tx_ch_get, msm_vi_feed_tx_ch_put),
 	SOC_ENUM_EXT("MI2S_RX SampleRate", msm_snd_enum[6],
 			mi2s_rx_sample_rate_get, mi2s_rx_sample_rate_put),
-#if defined(CONFIG_AW87319)
-	SOC_ENUM_EXT("Lineout_1 amp", msm_snd_enum[7],
+		SOC_ENUM_EXT("Lineout_1 amp", msm_snd_enum[7],
 			lineout_status_get, lineout_status_put),
 	SOC_ENUM_EXT("headset amp", msm_snd_enum[8],
 			headset_status_get, headset_status_put),
-#endif
 };
 
 static int msm8952_mclk_event(struct snd_soc_dapm_widget *w,
@@ -1231,13 +1224,12 @@ static int msm8952_wsa_switch_event(struct snd_soc_dapm_widget *w,
 				__func__);
 			return ret;
 		}
-		if (atomic_dec_return(&supply->ref) == 0) {
+		if (atomic_dec_return(&supply->ref) == 0)
 			ret = regulator_disable(supply->supply);
 			if (ret)
 				dev_err(w->codec->component.card->dev,
 					"%s: Failed to disable wsa switch supply\n",
 					__func__);
-		}
 		break;
 	default:
 		break;
@@ -1560,7 +1552,6 @@ static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 				substream->name, substream->stream);
-
 	if (!q6core_is_adsp_ready()) {
 		pr_err("%s(): adsp not ready\n", __func__);
 		return -EINVAL;
@@ -1691,7 +1682,7 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 		return NULL;
 
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(msm8952_wcd_cal)->X) = (Y))
-	S(v_hs_max, 1500);
+	S(v_hs_max, 1600);
 #undef S
 #define S(X, Y) ((WCD_MBHC_CAL_BTN_DET_PTR(msm8952_wcd_cal)->X) = (Y))
 	S(num_btn, WCD_MBHC_DEF_BUTTONS);
@@ -1714,18 +1705,32 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 	 * 210-290 == Button 2
 	 * 360-680 == Button 3
 	 */
-	btn_low[0] = 75;
+	btn_low[0] = 25;
 	btn_high[0] = 75;
-	btn_low[1] = 150;
-	btn_high[1] = 150;
-	btn_low[2] = 225;
-	btn_high[2] = 225;
-	btn_low[3] = 450;
-	btn_high[3] = 450;
-	btn_low[4] = 500;
-	btn_high[4] = 500;
+	btn_low[1] = 200;
+	btn_high[1] = 225;
+	btn_low[2] = 325;
+	btn_high[2] = 450;
+	btn_low[3] = 500;
+	btn_high[3] = 510;
+	btn_low[4] = 530;
+	btn_high[4] = 540;
 
 	return msm8952_wcd_cal;
+}
+
+extern char Spk_Pa_Flag[];
+static void Set_Spk_PA_Id(void)
+{
+	int ret = 0;
+
+	ret = strncmp(Spk_Pa_Flag, "S88537A12", 9);
+	if (ret == 0)  {
+		Spk_Pa_Id = A12_AW8738_SPK_PA;
+	} else {
+		Spk_Pa_Id = A13_AW87319_SPK_PA;
+	}
+	pr_err("%s:Spk_Pa_Id =%d\n!", __func__, Spk_Pa_Id);
 }
 
 static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
@@ -1774,14 +1779,15 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 			return ret;
 		}
 	}
-	
-#if defined(CONFIG_AW87319)
+
 	INIT_DELAYED_WORK(&lineout_amp_enable, msm8952_ext_spk__delayed_enable);
 
 	INIT_DELAYED_WORK(&lineout_amp_dualmode, msm8x16_ext_spk_delayed_dualmode);
 
 	INIT_DELAYED_WORK(&lineout_hs_sw_enable, msm8952_ext_hs_delay_enable);
-#endif
+
+	Set_Spk_PA_Id();
+
 	return 0;
 }
 
@@ -3243,22 +3249,28 @@ parse_mclk_freq:
 	}
 	pdata->mclk_freq = id;
 
-#if defined(CONFIG_AW87319)
+
 	spk_pa_gpio = of_get_named_gpio(pdev->dev.of_node, "ext-spk-amp-gpio", 0);
 	if (spk_pa_gpio < 0) {
 		dev_err(&pdev->dev,
-		"%s: error! spk_pa_gpio is :%d\n", __func__, spk_pa_gpio);
+				"%s: error! spk_pa_gpio is :%d\n", __func__, spk_pa_gpio);
+	} else {
+		if (gpio_request_one(spk_pa_gpio, GPIOF_DIR_OUT , "spk_enable")) {
+			dev_err(&pdev->dev, "%s: request spk_pa_gpio  fail!\n", __func__);
+		}
 	}
-	pr_err("%s: [hjf] request spk_pa_gpio is %d!\n", __func__, spk_pa_gpio);
+	pr_debug("%s:  request spk_pa_gpio is %d!\n", __func__, spk_pa_gpio);
 
 	headset_gpio = of_get_named_gpio(pdev->dev.of_node, "headset-gpio", 0);
 	if (headset_gpio < 0) {
 		dev_err(&pdev->dev,
-		"%s: error! headset_gpio is :%d\n", __func__, headset_gpio);
-	} 
-	pr_err("%s: [hjf] request headset_gpio is %d!\n", __func__, headset_gpio);
-	
-#endif
+				"%s: error! headset_gpio is :%d\n", __func__, headset_gpio);
+	} else {
+		if (gpio_request_one(headset_gpio, GPIOF_DIR_OUT , "headset_enable")) {
+			dev_err(&pdev->dev, "%s: request headset_gpio  fail!\n", __func__);
+		}
+	}
+	pr_debug("%s:request headset_gpio is %d!\n", __func__, headset_gpio);
 
 	/*reading the gpio configurations from dtsi file*/
 	ret = msm_gpioset_initialize(CLIENT_WCD_INT, &pdev->dev);
@@ -3477,6 +3489,10 @@ err:
 			kfree(msm8952_codec_conf[i].name_prefix);
 		}
 	}
+	if (spk_pa_gpio > 0)
+		gpio_free(spk_pa_gpio);
+	if (headset_gpio > 0)
+		gpio_free(headset_gpio);
 err1:
 	devm_kfree(&pdev->dev, pdata);
 	return ret;
