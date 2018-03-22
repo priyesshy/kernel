@@ -6124,10 +6124,10 @@ tSirRetStatus limSendAddBARsp( tpAniSirGlobal pMac,
     //Pkt will be freed up by the callback
     return statusCode;
   }
-  else
+  else {
     return eSIR_SUCCESS;
-
-    returnAfterError:
+  }
+  returnAfterError:
       // Release buffer, if allocated
       if( NULL != pAddBARspBuffer )
         palPktFree( pMac->hHdd,
@@ -6328,10 +6328,10 @@ tSirRetStatus limSendDelBAInd( tpAniSirGlobal pMac,
     //Pkt will be freed up by the callback
     return statusCode;
   }
-  else
+  else {
     return eSIR_SUCCESS;
-
-    returnAfterError:
+  }
+  returnAfterError:
 
       // Release buffer, if allocated
       if( NULL != pDelBAIndBuffer )
