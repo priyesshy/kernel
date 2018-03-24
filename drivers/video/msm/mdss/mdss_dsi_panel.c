@@ -36,7 +36,6 @@
 
 #define VSYNC_DELAY msecs_to_jiffies(17)
 extern char Lcm_name[HARDWARE_MAX_ITEM_LONGTH];
-<<<<<<< HEAD
 
 bool display_on = true;
 
@@ -46,8 +45,6 @@ bool is_display_on()
 }
 extern char Lcm_name[HARDWARE_MAX_ITEM_LONGTH];
 extern bool is_Lcm_Present;
-=======
->>>>>>> parent of 9be163ab1fd... msm: mdss: selection Xiaomi kernel changes for Redmi 4/4X
 
 DEFINE_LED_TRIGGER(bl_led_trigger);
 
