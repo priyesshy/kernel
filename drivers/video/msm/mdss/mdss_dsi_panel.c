@@ -31,7 +31,6 @@
 #include "mdss_dba_utils.h"
 #endif
 
-#include "mdss_livedisplay.h"
 
 #ifdef CONFIG_POWERSUSPEND
 #include <linux/powersuspend.h>
