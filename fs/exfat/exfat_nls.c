@@ -353,15 +353,7 @@ void nls_cstring_to_uniname(struct super_block *sb, UNI_NAME_T *p_uniname, u8 *p
 		lossy = TRUE;
 
 	if (nls == NULL) {
-<<<<<<< HEAD
 		i = utf8s_to_utf16s(p_cstring, MAX_NAME_LENGTH, UTF16_HOST_ENDIAN, uniname, MAX_NAME_LENGTH);
-=======
-#if LINUX_VERSION_CODE < KERNEL_VERSION(3,0,101)
-		i = utf8s_to_utf16s(p_cstring, MAX_NAME_LENGTH, uniname);
-#else
-		i = utf8s_to_utf16s(p_cstring, MAX_NAME_LENGTH, UTF16_HOST_ENDIAN, uniname, MAX_NAME_LENGTH);
-#endif
->>>>>>> 2e91caa459eb... fs: import exfat
 		for (j = 0; j < i; j++)
 			SET16_A(upname + j * 2, nls_upper(sb, uniname[j]));
 		uniname[i] = '\0';
