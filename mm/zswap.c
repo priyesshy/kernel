@@ -82,9 +82,6 @@ static u64 zswap_duplicate_entry;
 static bool zswap_enabled __read_mostly;
 module_param_named(enabled, zswap_enabled, bool, 0444);
 module_param_named(enabled, zswap_enabled, bool, 0);
-/* Enable/disable zswap (enabled by default) */
-static bool zswap_enabled = 1;
-module_param_named(enabled, zswap_enabled, bool, 0644);
 
 /* Compressor to be used by zswap (fixed at boot for now) */
 #define ZSWAP_COMPRESSOR_DEFAULT "lzo"
