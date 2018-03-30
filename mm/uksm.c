@@ -4619,45 +4619,15 @@ static int ksmd_should_run(void)
 	return uksm_run & UKSM_RUN_MERGE;
 }
 
-static void process_timeout(unsigned long data)
-{
-	wake_up_process((struct task_struct *)data);
-}
-
 static int uksm_scan_thread(void *nothing)
 {
-	long timeout = 120 * HZ, expire;
-	struct timer_list timer;
-
 	set_freezable();
 	set_user_nice(current, 5);
-
-	setup_deferrable_timer_on_stack(&timer, process_timeout,
-		(unsigned long)current);
 
 	while (!kthread_should_stop()) {
 		mutex_lock(&uksm_thread_mutex);
 		if (ksmd_should_run()) {
 			uksm_do_scan();
-		__set_current_state(TASK_INTERRUPTIBLE);
-		expire = jiffies + timeout;
-		mod_timer(&timer, expire);
-		schedule();
-		del_singleshot_timer_sync(&timer);
-
-		timeout = expire - jiffies;
-		if (timeout < 0)
-			timeout = 0;
-
-		if (unlikely(try_to_freeze()))
-			timeout = 5 * HZ;
-
-		if (unlikely(timeout))
-			continue;
-
-		if (unlikely(mutex_lock_interruptible(&uksm_thread_mutex))) {
-			timeout = uksm_sleep_jiffies;
-			continue;
 		}
 		mutex_unlock(&uksm_thread_mutex);
 
@@ -4665,19 +4635,12 @@ static int uksm_scan_thread(void *nothing)
 
 		if (ksmd_should_run()) {
 			schedule_timeout_interruptible(uksm_sleep_real);
-		if (likely(ksmd_should_run())) {
-			uksm_do_scan();
-			mutex_unlock(&uksm_thread_mutex);
 			uksm_sleep_times++;
 		} else {
 			wait_event_freezable(uksm_thread_wait,
 				ksmd_should_run() || kthread_should_stop());
 		}
-		timeout = uksm_sleep_jiffies;
 	}
-
-	destroy_timer_on_stack(&timer);
-
 	return 0;
 }
 
