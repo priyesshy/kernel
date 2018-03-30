@@ -179,6 +179,8 @@ static void update_policy_online(void)
 			pr_debug("Updating policy for CPU%d\n", i);
 			cpufreq_update_policy(i);
 		}
+		pr_debug("Updating policy for CPU%d\n", i);
+		cpufreq_update_policy(i);
 	}
 	put_online_cpus();
 }
