@@ -51,4 +51,3 @@ obj-m					+= $(arm64-obj-m)
 head-y					:= head.o
 extra-y					:= $(head-y) vmlinux.lds
 obj-y					+= msm_hotplug.o
-obj-y                                   += autosmp.o
