@@ -61,8 +61,6 @@ static const char * const pctl_names[] = {
 	"fpc1020_irq_active",
 };
 
-<<<<<<< HEAD
-=======
 struct vreg_config {
 	char *name;
 	unsigned long vmin;
@@ -76,7 +74,6 @@ static const struct vreg_config vreg_conf[] = {
 	{ "vdd_io", 1800000UL, 1800000UL, 6000, },
 };
 
->>>>>>> eb4027e725de... Tissot : Fix gcc 7.2 warning/errors and fix boot
 struct fpc1020_data {
 	struct device *dev;
 	struct pinctrl *fingerprint_pinctrl;
