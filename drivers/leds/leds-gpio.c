@@ -4,29 +4,27 @@
  * Copyright (C) 2007 8D Technologies inc.
  * Raphael Assenat <raph@8d.com>
  * Copyright (C) 2008 Freescale Semiconductor, Inc.
+ * Copyright (C) 2016 XiaoMi, Inc.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 as
  * published by the Free Software Foundation.
  *
  */
-#include <linux/err.h>
-#include <linux/gpio.h>
 #include <linux/kernel.h>
-#include <linux/leds.h>
-#include <linux/module.h>
-#include <linux/of.h>
-#include <linux/of_gpio.h>
-#include <linux/of_platform.h>
+#include <linux/init.h>
+#include <linux/hrtimer.h>
 #include <linux/platform_device.h>
+#include <linux/gpio.h>
+#include <linux/leds.h>
+#include <linux/of_platform.h>
+#include <linux/of_gpio.h>
 #include <linux/slab.h>
 #include <linux/workqueue.h>
-
-#if defined(CONFIG_IR_GPIO)
-#include <linux/hrtimer.h>
+#include <linux/module.h>
 #include <linux/pinctrl/consumer.h>
+#include <linux/err.h>
 #include <linux/delay.h>
-
 #define DUTY_CLCLE 50
 #define ADJUST_NUM 15
 #define JUSTTIMES 6
@@ -48,14 +46,6 @@ struct gpio_ir_tx_packet {
 	bool abort;
 };
 
-struct mutex ir_lock;
-
-#if defined (WT_USE_FAN54015)
-extern int fan54015_getcharge_stat(void);
-#endif
-#endif
-
-
 struct gpio_led_data {
 	struct led_classdev cdev;
 	unsigned gpio;
@@ -64,14 +54,21 @@ struct gpio_led_data {
 	u8 can_sleep;
 	u8 active_low;
 	u8 blinking;
-	int (*platform_gpio_blink_set)(unsigned gpio, int state,
-			unsigned long *delay_on, unsigned long *delay_off);
+	int (*platform_gpio_blink_set) (unsigned gpio, int state,
+					unsigned long *delay_on,
+					unsigned long *delay_off);
 };
+
+struct mutex ir_lock;
+
+#if defined (WT_USE_FAN54015)
+extern int fan54015_getcharge_stat(void);
+#endif
 
 static void gpio_led_work(struct work_struct *work)
 {
 	struct gpio_led_data *led_dat =
-		container_of(work, struct gpio_led_data, work);
+	    container_of(work, struct gpio_led_data, work);
 
 	if (led_dat->blinking) {
 		led_dat->platform_gpio_blink_set(led_dat->gpio,
@@ -80,15 +77,16 @@ static void gpio_led_work(struct work_struct *work)
 		led_dat->blinking = 0;
 	} else
 		gpio_set_value_cansleep(led_dat->gpio, led_dat->new_level);
+	printk("infr has been end");
 }
 
 static void gpio_led_set(struct led_classdev *led_cdev,
-	enum led_brightness value)
+			 enum led_brightness value)
 {
 	struct gpio_led_data *led_dat =
-		container_of(led_cdev, struct gpio_led_data, cdev);
-	int level;
-
+	    container_of(led_cdev, struct gpio_led_data, cdev);
+	int level, ret = 0;
+	printk("infr has been start");
 	if (value == LED_OFF)
 		level = 0;
 	else
@@ -110,7 +108,12 @@ static void gpio_led_set(struct led_classdev *led_cdev,
 							 NULL, NULL);
 			led_dat->blinking = 0;
 		} else
-			gpio_set_value(led_dat->gpio, level);
+			ret = gpio_direction_output(led_dat->gpio, level);
+		if (ret) {
+			printk("infrared unable to set dir for gpio [%d]\n",
+			       led_dat->gpio);
+		}
+
 	}
 }
 
@@ -125,7 +128,6 @@ static int gpio_blink_set(struct led_classdev *led_cdev,
 						delay_on, delay_off);
 }
 
-#if defined(CONFIG_IR_GPIO)
 static void gpio_ir_tx_set(struct gpio_ir_tx_packet *gpkt, bool on)
 {
 	if (gpkt->high_active)
@@ -335,7 +337,6 @@ static ssize_t transmit_store(struct device *dev,
 }
 
 static DEVICE_ATTR(transmit, 0664, transmit_show, transmit_store);
-#endif
 
 static int create_gpio_led(const struct gpio_led *template,
 	struct gpio_led_data *led_dat, struct device *parent,
@@ -345,7 +346,6 @@ static int create_gpio_led(const struct gpio_led *template,
 #if defined (WT_USE_FAN54015)
 	int chg_status;
 #endif
-
 
 	led_dat->gpio = -1;
 
@@ -378,6 +378,7 @@ static int create_gpio_led(const struct gpio_led *template,
 	led_dat->cdev.brightness = state ? LED_FULL : LED_OFF;
 	if (!template->retain_state_suspended)
 		led_dat->cdev.flags |= LED_CORE_SUSPENDRESUME;
+
 #if defined (WT_USE_FAN54015)
 	chg_status = fan54015_getcharge_stat();
 	if (!strcmp(template->name, "red")) {
@@ -390,7 +391,6 @@ static int create_gpio_led(const struct gpio_led *template,
 		}
 	}
 #else
-
 	ret = gpio_direction_output(led_dat->gpio, led_dat->active_low ^ state);
 	if (ret < 0)
 		return ret;
@@ -400,11 +400,11 @@ static int create_gpio_led(const struct gpio_led *template,
 	ret = led_classdev_register(parent, &led_dat->cdev);
 	if (ret < 0)
 		return ret;
-#if defined(CONFIG_IR_GPIO) 
+
 	if (strcmp(led_dat->cdev.name, "infrared") == 0) {
 		device_create_file(led_dat->cdev.dev, &dev_attr_transmit);
 	}
-#endif
+
 	return 0;
 }
 
@@ -440,7 +440,7 @@ static struct gpio_leds_priv *gpio_leds_create_of(struct platform_device *pdev)
 	if (!count)
 		return ERR_PTR(-ENODEV);
 
-	for_each_available_child_of_node(np, child)
+	for_each_child_of_node(np, child)
 		if (of_get_gpio(child, 0) == -EPROBE_DEFER)
 			return ERR_PTR(-EPROBE_DEFER);
 
@@ -449,8 +449,8 @@ static struct gpio_leds_priv *gpio_leds_create_of(struct platform_device *pdev)
 	if (!priv)
 		return ERR_PTR(-ENOMEM);
 
-	for_each_available_child_of_node(np, child) {
-		struct gpio_led led = {};
+	for_each_child_of_node(np, child) {
+		struct gpio_led led = { };
 		enum of_gpio_flags flags;
 		const char *state;
 
@@ -469,8 +469,9 @@ static struct gpio_leds_priv *gpio_leds_create_of(struct platform_device *pdev)
 				led.default_state = LEDS_GPIO_DEFSTATE_OFF;
 		}
 
-		if (of_get_property(child, "retain-state-suspended", NULL))
-			led.retain_state_suspended = 1;
+		led.retain_state_suspended =
+		    (unsigned)of_property_read_bool(child,
+						    "retain-state-suspended");
 
 		ret = create_gpio_led(&led, &priv->leds[priv->num_leds++],
 				      &pdev->dev, NULL);
@@ -492,8 +493,6 @@ static const struct of_device_id of_gpio_leds_match[] = {
 	{ .compatible = "gpio-leds", },
 	{},
 };
-
-MODULE_DEVICE_TABLE(of, of_gpio_leds_match);
 #else /* CONFIG_OF_GPIO */
 static struct gpio_leds_priv *gpio_leds_create_of(struct platform_device *pdev)
 {
@@ -503,19 +502,15 @@ static struct gpio_leds_priv *gpio_leds_create_of(struct platform_device *pdev)
 
 static int gpio_led_probe(struct platform_device *pdev)
 {
-	struct gpio_led_platform_data *pdata = dev_get_platdata(&pdev->dev);
+	struct gpio_led_platform_data *pdata = pdev->dev.platform_data;
 	struct gpio_leds_priv *priv;
-#if defined(CONFIG_IR_GPIO)
 	struct pinctrl *pinctrl;
-#endif
 	int i, ret = 0;
 
-#if defined(CONFIG_IR_GPIO)
 	pinctrl = devm_pinctrl_get_select_default(&pdev->dev);
 	if (IS_ERR(pinctrl))
 		dev_warn(&pdev->dev,
 			 "pins are not configured from the driver\n");
-#endif
 
 	if (pdata && pdata->num_leds) {
 		priv = devm_kzalloc(&pdev->dev,
@@ -543,9 +538,8 @@ static int gpio_led_probe(struct platform_device *pdev)
 	}
 
 	platform_set_drvdata(pdev, priv);
-#if defined(CONFIG_IR_GPIO)
 	mutex_init(&ir_lock);
-#endif
+
 	return 0;
 }
 
@@ -556,9 +550,8 @@ static int gpio_led_remove(struct platform_device *pdev)
 
 	for (i = 0; i < priv->num_leds; i++)
 		delete_gpio_led(&priv->leds[i]);
-#if defined(CONFIG_IR_GPIO)
+
 	platform_set_drvdata(pdev, NULL);
-#endif
 	return 0;
 }
 
