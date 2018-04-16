@@ -8,6 +8,7 @@
  * interface.
  *
  * Copyright (C) 2010 IBM Corperation
+ * Copyright (C) 2018 XiaoMi, Inc.
  *
  * Author: John Stultz <john.stultz@linaro.org>
  * Copyright (C) 2018 XiaoMi, Inc.
@@ -26,6 +27,9 @@
 #include <linux/posix-timers.h>
 #include <linux/workqueue.h>
 #include <linux/freezer.h>
+#include <linux/module.h>
+#include <linux/moduleparam.h>
+
 #include <linux/module.h>
 #include <linux/moduleparam.h>
 
@@ -406,6 +410,7 @@ static int alarmtimer_suspend(struct device *dev)
 
 		tm_val = rtc_ktime_to_tm(min);
 		rtc_tm_to_time(&tm_val, &secs);
+		
 #ifdef WT_COMPILE_FACTORY_VERSION
 		lpm_suspend_wake_time(secs+240);
 #else
