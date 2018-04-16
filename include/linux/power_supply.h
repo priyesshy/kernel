@@ -371,6 +371,8 @@ struct power_supply {
 	int use_for_apm;
 	u8 bms_psy_ok;
 
+	u8 bms_psy_ok;
+
 	/* Driver private data */
 	void *drv_data;
 
