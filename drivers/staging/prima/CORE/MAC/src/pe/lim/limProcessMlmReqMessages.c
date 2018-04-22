@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2017 The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2018 The Linux Foundation. All rights reserved.
  *
  * Previously licensed under the ISC license by Qualcomm Atheros, Inc.
  *
@@ -524,6 +524,16 @@ void limContinuePostChannelScan(tpAniSirGlobal pMac)
 
             // Initialize max timer too
             limDeactivateAndChangeTimer(pMac, eLIM_MAX_CHANNEL_TIMER);
+            if (tx_timer_activate(&pMac->lim.limTimers.gLimMaxChannelTimer) !=
+                                                                     TX_SUCCESS)
+            {
+                limLog(pMac, LOGE, FL("could not start max channel timer"));
+                limDeactivateAndChangeTimer(pMac, eLIM_MIN_CHANNEL_TIMER);
+                limDeactivateAndChangeTimer(pMac, eLIM_MAX_CHANNEL_TIMER);
+                limSendHalEndScanReq(pMac, channelNum,
+                                     eLIM_HAL_END_SCAN_WAIT_STATE);
+                return;
+            }
 #if defined WLAN_FEATURE_VOWIFI
         }
            else
@@ -3543,6 +3553,8 @@ void lim_process_ap_ecsa_timeout(tpAniSirGlobal mac_ctx)
      */
     if (session->gLimChannelSwitch.switchCount > 0) {
         session->gLimChannelSwitch.switchCount--;
+        lim_send_chan_switch_action_frame(mac_ctx,
+                 session->gLimChannelSwitch.primaryChannel, session);
         mac_ctx->lim.limTimers.g_lim_ap_ecsa_timer.sessionId =
                                              session->peSessionId;
         limDeactivateAndChangeTimer(mac_ctx, eLIM_AP_ECSA_TIMER);
@@ -3971,15 +3983,18 @@ tLimMlmRemoveKeyCnf  mlmRemoveKeyCnf;
       
 
       goto end;
-  } else {
-    staIdx = pStaDs->staIndex;  
-    psessionEntry->limMlmState = eLIM_MLM_WT_REMOVE_STA_KEY_STATE;
-    MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
+  }
+  else
+      staIdx = pStaDs->staIndex;
 
-    // Package WDA_REMOVE_STAKEY_REQ message parameters
-    limSendRemoveStaKeyReq( pMac,pMlmRemoveKeyReq,staIdx,psessionEntry);
-    return;
- }
+  psessionEntry->limMlmState = eLIM_MLM_WT_REMOVE_STA_KEY_STATE;
+  MTRACE(macTrace(pMac, TRACE_CODE_MLM_STATE, psessionEntry->peSessionId, psessionEntry->limMlmState));
+
+  // Package WDA_REMOVE_STAKEY_REQ message parameters
+  limSendRemoveStaKeyReq( pMac,pMlmRemoveKeyReq,staIdx,psessionEntry);
+
+  return;
+ 
 end:
     limPostSmeRemoveKeyCnf( pMac,
       psessionEntry,
@@ -4034,6 +4049,11 @@ limProcessMinChannelTimeout(tpAniSirGlobal pMac)
         pMac->lim.limTimers.gLimPeriodicProbeReqTimer.sessionId = 0xff;
         limDeactivateAndChangeTimer(pMac, eLIM_MIN_CHANNEL_TIMER);
         limDeactivateAndChangeTimer(pMac, eLIM_PERIODIC_PROBE_REQ_TIMER);
+        /*
+         * Deactivate Max Channel timer as well since no probe resp/beacons
+         * are received.
+         */
+        limDeactivateAndChangeTimer(pMac, eLIM_MAX_CHANNEL_TIMER);
         pMac->lim.probeCounter = 0;
         if (pMac->lim.gLimCurrentScanChannelId <=
                 (tANI_U32)(pMac->lim.gpLimMlmScanReq->channelList.numChannels - 1))
