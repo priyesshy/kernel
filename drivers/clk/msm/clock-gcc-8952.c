@@ -264,8 +264,8 @@ static struct pll_freq_tbl apcs_c1_pll_freq[] = {
 	F_APCS_PLL(1536000000, 80, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1574400000, 82, 0x0, 0x1, 0x0, 0x0, 0x0),
 	F_APCS_PLL(1651200000, 86, 0x0, 0x1, 0x0, 0x0, 0x0),
-	F_APCS_PLL(1747200000, 87, 0x0, 0x1, 0x0, 0x0, 0x0),
-	F_APCS_PLL(1843200000, 88, 0x0, 0x1, 0x0, 0x0, 0x0),
+	F_APCS_PLL(1747200000, 91, 0x0, 0x1, 0x0, 0x0, 0x0),
+	F_APCS_PLL(1843200000, 95, 0x0, 0x1, 0x0, 0x0, 0x0),
 };
 
 static struct pll_clk a53ss_c1_pll = {
@@ -775,7 +775,7 @@ static struct clk_freq_tbl ftbl_gcc_oxili_gfx3d_clk_8937_475MHz[] = {
 	F_SLEW( 450000000, 900000000,	  gpll3,	1,	0,	0),
 	F_SLEW( 475000000, 950000000,	  gpll3,	1,	0,	0),
 	F_SLEW( 525000000, 1050000000,	  gpll3,	1,	0,	0),
-	F_SLEW( 650000000, 1100000000,	  gpll3,	1,	0,	0),
+	F_SLEW( 650000000, 1300000000,	  gpll3,	1,	0,	0),
 	F_END
 };
 
@@ -799,7 +799,7 @@ static struct clk_freq_tbl ftbl_gcc_oxili_gfx3d_clk_8940_600MHz[] = {
 	F_SLEW( 450000000, 900000000,	  gpll3,	1,	0,	0),
 	F_SLEW( 475000000, 950000000,	  gpll3,	1,	0,	0),
 	F_SLEW( 525000000, 1000000000,	  gpll3,	1,	0,	0),
-	F_SLEW( 650000000, 1050000000,	  gpll3,	1,	0,	0),
+	F_SLEW( 650000000, 1300000000,	  gpll3,	1,	0,	0),
 	F_END
 };
 
