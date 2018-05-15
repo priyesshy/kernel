@@ -649,7 +649,7 @@ KBUILD_AFLAGS	+= $(call cc-option,-fno-PIE)
 ifneq ($(KBUILD_LOUP_CFLAGS),)
 $(info Using custom flags!!! [${KBUILD_LOUP_CFLAGS}])
 KBUILD_CFLAGS   += $(KBUILD_LOUP_CFLAGS) $(call cc-disable-warning,maybe-uninitialized,)
-ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
+else ifdef CONFIG_CC_OPTIMIZE_FOR_SIZE
 KBUILD_CFLAGS	+= $(call cc-option,-Oz,-Os) $(call cc-disable-warning,maybe-uninitialized,)
 else
 KBUILD_CFLAGS	+= -O2
