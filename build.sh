@@ -64,7 +64,7 @@ fi
 # ==================================
 # point CROSS_COMPILE to the folder of the desired toolchain
 # don't forget to specify the prefix. Mine is: aarch64-linux-android-
-CROSS_COMPILE=$~/home/yusufgadrie/tools1/bin/aarch64-linux-android-
+CROSS_COMPILE=$~/home/yusufgadrie/tools1/bin/aarch64-linux-gnu-
 
 
 # Want to use clang?
